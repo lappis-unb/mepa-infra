@@ -1,0 +1,63 @@
+- name: Create user for Ansible tasks with SSH key authentication
+  hosts: all
+  gather_facts: false
+  vars:
+    ansible_ssh_user: 'root'
+  vars_files:
+    - ../host_vars/users.yml
+  tasks:
+    - name: Create user
+      ansible.builtin.user:
+        name: '{{ ansible_user }}'
+        groups: '{{ user_groups }}'
+        append: true
+        shell: '/bin/bash'
+        state: 'present'
+        createhome: true
+      register: user_creation
+
+    - name: Ensure passwordless sudo for the user
+      ansible.builtin.lineinfile:
+        path: '/etc/sudoers.d/{{ ansible_user }}'
+        line: '{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL'
+        create: true
+        validate: '/usr/sbin/visudo -cf %s'
+        owner: root
+        group: root
+        mode: '0440'
+      when: user_creation is changed # noqa: no-handler
+
+    - name: Create SSH directory for new user
+      ansible.builtin.file:
+        path: '/home/{{ ansible_user }}/.ssh'
+        state: 'directory'
+        owner: '{{ ansible_user }}'
+        group: '{{ ansible_user }}'
+        mode: '0700'
+      when: user_creation is changed # noqa: no-handler
+      register: ssh_dir_creation
+
+    - name: Copy SSH authorized keys
+      ansible.builtin.copy:
+        src: '/root/.ssh/authorized_keys'
+        dest: '/home/{{ ansible_user }}/.ssh/authorized_keys'
+        remote_src: true
+        owner: '{{ ansible_user }}'
+        mode: '0600'
+      when: ssh_dir_creation.changed # noqa: no-handler
+      register: ssh_keys_copy
+
+    - name: Disable root login SSH
+      ansible.builtin.lineinfile:
+        path: '/etc/ssh/sshd_config'
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: 'present'
+      notify: Restart sshd
+      when: ssh_keys_copy.changed # noqa: no-handler
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted

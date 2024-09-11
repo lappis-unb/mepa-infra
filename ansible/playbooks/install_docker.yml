@@ -1,0 +1,62 @@
+- name: Install Docker and Docker Compose
+  hosts: all
+  become: true
+  vars:
+    required_packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ required_packages }}"
+      register: installed_packages
+      until: installed_packages is succeeded
+
+    - name: Ensure keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add Docker's official GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Add Docker repository to apt sources
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Update apt cache and install Docker packages
+      ansible.builtin.apt:
+        update_cache: true
+        name: "{{ item }}"
+        state: present
+      loop: "{{ docker_packages }}"
+
+    - name: Add user to docker group
+      vars:
+        users_file: host_vars/users.yml
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        state: present
+        append: true
+      notify: Restart docker
+
+  handlers:
+    - name: Restart docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted

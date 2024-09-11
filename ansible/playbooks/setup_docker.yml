@@ -1,0 +1,21 @@
+---
+- name: Setup Docker environment network and volumes
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Create docker network
+      community.docker.docker_network:
+        name: proxy-network
+        state: present
+        driver: bridge
+
+    # - name: Create volumes for django static and media files
+    #   community.docker.docker_volume:
+    #     name: "{{ item }}"
+    #     state: present
+    #   loop:
+    #     - "static_volume"
+    #     - "media_volume"
+    #     - "nextjs_static"
+    #     - "nextjs_public"

@@ -1,0 +1,28 @@
+---
+- name: Initial Setup for a Debian VPS
+  hosts: all
+  become: true
+  tasks:
+    - name: Update and upgrade all packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: 'dist'
+        autoremove: true
+        autoclean: true
+        cache_valid_time: 3600
+
+    - name: Install essential packages
+      ansible.builtin.apt:
+        name:
+          - htop
+          - vim
+          - git
+          - curl
+          - wget
+          - make
+          - net-tools
+        state: present
+
+    - name: Set timezone to America/Sao_Paulo
+      community.general.timezone:
+        name: America/Sao_Paulo

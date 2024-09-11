@@ -1,0 +1,11 @@
+[staging]
+127.0.0.1
+
+[homolog]
+127.0.0.1
+
+[production]
+127.0.0.1
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
