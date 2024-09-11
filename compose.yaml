@@ -1,0 +1,33 @@
+services:
+  webserver:
+    container_name: webserver
+    build: .
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/ssl/certs/dhparam.pem:/etc/ssl/certs/dhparam.pem:ro
+      - /etc/ssl/_letsencrypt:/etc/ssl/_letsencrypt
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/mediafiles:ro
+      - nextjs_static:/app/nextjs_static:ro
+      - nextjs_public:/app/nextjs_public:ro
+    networks:
+      - proxy-network
+
+volumes:
+  static_volume:
+    external: true
+  media_volume:
+    external: true
+  nextjs_static:
+    external: true
+  nextjs_public:
+    external: true
+
+networks:
+  proxy-network:
+    external: true
