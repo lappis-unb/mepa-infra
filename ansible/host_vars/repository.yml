@@ -1,0 +1,8 @@
+mepa_infra_repo: 'https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mepa-infra.git'
+mepa_infra_path: '/home/lappis/mepa-infra'
+
+mepa_api_repo: 'https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mec-energia-api.git'
+mepa_api_path: '/home/lappis/mec-energia-api'
+
+mepa_web_repo: 'https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mec-energia-web.git'
+mepa_web_path: '/home/lappis/mec-energia-web'
