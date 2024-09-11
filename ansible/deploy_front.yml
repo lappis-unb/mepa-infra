@@ -1,0 +1,48 @@
+- name: Deploy frontend app using Docker Compose
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - host_vars/repository.yml
+  tasks:
+    - name: Clone or update the repository - branch development
+      ansible.builtin.git:
+        repo: '{{ sige_front_repo }}'
+        dest: '{{ sige_front_path }}'
+        clone: true
+        update: true
+        single_branch: true
+        version: 'development'
+        force: true
+      register: git_output
+
+    - name: Show results of the git module
+      ansible.builtin.debug:
+        msg: >
+          repository {{ sige_front_repo }} => {
+          changed: {{ git_output.changed | bool | lower }},
+          message: {{ git_output.msg | default('No changes detected!') }} }
+
+    - name: Build and start services (if repo was updated)
+      community.docker.docker_compose_v2:
+        project_src: '{{ sige_front_path }}'
+        files: docker-compose.yml
+        state: present
+        build: always
+        recreate: always
+        pull: policy
+      when: git_output.changed is true # noqa: no-handler
+
+    - name: Start services (if repo is up-to-date)
+      community.docker.docker_compose_v2:
+        project_src: '{{ sige_front_path }}'
+        files: docker-compose.yml
+        state: present
+        build: never
+        recreate: never
+        pull: missing
+      when: git_output.changed is false # noqa: no-handler
+      register: compose_output
+
+    - name: Show results of Docker Compose
+      ansible.builtin.debug:
+        var: compose_output.stderr_lines
