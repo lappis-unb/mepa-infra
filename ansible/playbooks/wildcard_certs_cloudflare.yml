@@ -1,0 +1,61 @@
+---
+- name: Setup Certbot with Cloudflare DNS for SSL certificates
+  hosts: all
+  become: true
+  vars_files:
+    - ../host_vars/secrets.yml
+    - ../host_vars/users.yml
+  vars:
+    ansible_ssh_user: '{{ ansible_user }}'
+  tasks:
+    - name: Create directory for Cloudflare credentials
+      ansible.builtin.file:
+        path: '/home/{{ ansible_user }}/nginx/certbot'
+        state: directory
+        mode: '0700'
+
+    - name: Create Cloudflare DNS credentials file
+      ansible.builtin.copy:
+        dest: '/home/{{ ansible_user }}/nginx/certbot/cf_key.ini'
+        content: |
+          dns_cloudflare_api_token = {{ dns_cloudflare_api_token }}
+        mode: '0600'
+
+    - name: Generate SSL certificates using Certbot and Cloudflare DNS plugin
+      ansible.builtin.command: >
+        certbot certonly
+        --email {{ certbot_email }}
+        --dns-cloudflare
+        --dns-cloudflare-credentials ~/nginx/certbot/cf_key.ini
+        --dns-cloudflare-propagation-seconds 60
+        -d {{ cf_domain_name }}
+        -d '*.{{ cf_domain_name }}'
+        --non-interactive
+        --agree-tos
+      args:
+        creates: '/etc/letsencrypt/live/{{ cf_domain_name }}/fullchain.pem'
+
+    - name: List certificates
+      ansible.builtin.command: >
+        certbot certificates
+      register: certbot_certificates
+      changed_when: false
+
+    - name: Debug certificates
+      ansible.builtin.debug:
+        var: certbot_certificates
+
+    - name: Test automatic renewal of SSL certificates
+      ansible.builtin.command: >
+        certbot renew --dry-run
+      changed_when: false
+
+    - name: Ensure installed location of certbot renew command
+      ansible.builtin.command: >
+        systemctl list-timers --all | grep certbot
+      register: certbot_renewal
+      changed_when: false
+
+    - name: Debug certbot renewal location
+      ansible.builtin.debug:
+        var: certbot_renewal

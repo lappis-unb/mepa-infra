@@ -1,0 +1,68 @@
+---
+- name: Setup Certbot with DigitalOcean DNS for SSL certificates
+  hosts: all
+  become: true
+  vars_files:
+    - ../host_vars/secrets.yml
+    - ../host_vars/users.yml
+  vars:
+    ansible_ssh_user: "{{ ansible_user }}"
+  tasks:
+    - name: Create directory for DigitalOcean credentials
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/nginx/certbot"
+        state: directory
+        mode: '0700'
+
+    - name: Create DigitalOcean DNS credentials file
+      ansible.builtin.copy:
+        dest: "/home/{{ ansible_user }}/nginx/certbot/do_key.ini"
+        content: |
+          dns_digitalocean_token = {{ digital_ocean_token }}
+        mode: '0600'
+
+    - name: Generate SSL certificates using Certbot and DigitalOcean DNS plugin
+      ansible.builtin.command: >
+        certbot certonly
+        --email {{ certbot_email }}
+        --dns-digitalocean
+        --dns-digitalocean-credentials ~/nginx/certbot/do_key.ini
+        --dns-digitalocean-propagation-seconds 60
+        -d {{ do_domain_name }}
+        -d '*.{{ do_domain_name }}'
+        --non-interactive
+        --agree-tos
+      args:
+        creates: "/etc/letsencrypt/live/{{ do_domain_name }}/fullchain.pem"
+
+    # - name: Obtain SSL certificates using docker
+    #   ansible.builtin.command: >
+    #     docker run -it --rm
+    #     -v $PWD/cf_key.ini:/cloudflare.ini
+    #     -v $PWD/{{ cf_domain_name }}/letsencrypt:/etc/letsencrypt
+    #     -v $PWD/{{ cf_domain_name }}/letsencrypt:/var/lib/letsencrypt
+    #     # -v "/etc/letsencrypt:/etc/letsencrypt"
+    #     # -v "/var/lib/letsencrypt:/var/lib/letsencrypt"
+    #     certbot/dns-digitalocean certonly
+    #     --email {{ certbot_email }}
+    #     --dns-digitalocean
+    #     --dns-digitalocean-credentials /cloudflare.ini
+    #     --dns-digitalocean-propagation-seconds 60
+    #     -d {{ do_domain_name }}
+    #     -d '*.{{ do_domain_name }}'
+    #     --non-interactive
+    #     --agree-tos
+    #     --preferred-challenges dns-01
+
+    # - name: Renew SSL certificates using docker
+    #   ansible.builtin.command: >
+    #     docker run -it --rm
+    #     -v "/etc/letsencrypt:/etc/letsencrypt"
+    #     -v "/var/lib/letsencrypt:/var/lib/letsencrypt"
+    #     certbot/dns-digitalocean renew
+    #     --dns-digitalocean
+    #     --dns-digitalocean-credentials ~/nginx/certbot/do_key.ini
+    #     --dns-digitalocean-propagation-seconds 60
+    #     --non-interactive
+    #     --agree-tos
+    #     --preferred-challenges dns-01

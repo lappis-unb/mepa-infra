@@ -1,0 +1,19 @@
+---
+- name: Create OpenSSL DH parameters
+  hosts: all
+  become: true
+  vars_files:
+    - ../host_vars/users.yml
+  tasks:
+    - name: Create directory for ACME challenge
+      ansible.builtin.file:
+        path: /etc/ssl/_letsencrypt
+        state: directory
+        mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Generate DH parameters file
+      ansible.builtin.command:
+        cmd: openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+        creates: /etc/ssl/certs/dhparam.pem

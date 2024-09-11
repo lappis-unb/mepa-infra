@@ -1,0 +1,51 @@
+# https://certbot.eff.org/instructions?ws=webproduct&os=debianbuster
+
+- name: Install Certbot with DigitalOcean DNS Plugin (recommended snap package)
+  hosts: all
+  become: true
+  tasks:
+    - name: Install snapd to enable classic snap support
+      ansible.builtin.apt:
+        name: snapd
+        state: present
+        update_cache: true
+
+    - name: Remove Certbot OS packages if it exists
+      ansible.builtin.apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: absent
+        update_cache: true
+
+    - name: Remove certbot-auto if it exists
+      ansible.builtin.file:
+        path: /usr/local/bin/certbot-auto
+        state: absent
+
+    - name: Install Certbot snap package
+      community.general.snap:
+        name: certbot
+        classic: true
+        state: present
+
+    - name: Create symbolic link to certbot
+      ansible.builtin.file:
+        src: /snap/bin/certbot
+        dest: /usr/bin/certbot
+        state: link
+
+    - name: Grant permission snap trust to certbot plugin
+      ansible.builtin.command:
+        cmd: snap set certbot trust-plugin-with-root=ok
+      changed_when: false
+
+    - name: Install Certbot DigitalOcean DNS plugin
+      community.general.snap:
+        name: certbot-dns-digitalocean
+        state: present
+
+    - name: Install Certbot Cloudflare DNS plugin
+      community.general.snap:
+        name: certbot-dns-cloudflare
+        state: present
