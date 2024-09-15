@@ -1,0 +1,88 @@
+---
+- name: Create Wildcard SSL certificates using Certbot and cloudflare DNS plugin
+  hosts: all
+  become: true
+  vars_files:
+    - ../host_vars/secrets.yml
+    - ../host_vars/users.yml
+  vars:
+    ansible_ssh_user: '{{ ansible_user }}'
+    letsencrypt_dir: "/etc/letsencrypt/live/{{ domain_name }}"
+    credentials_dir: "/home/{{ ansible_user }}/certbot"
+    cert_file: "{{ letsencrypt_dir }}/fullchain.pem"
+
+  pre_tasks:
+    - name: Check if Certbot SNAP is installed
+      ansible.builtin.command: snap list certbot
+      register: certbot_snap_check
+      changed_when: false
+      failed_when: false
+
+    - name: Exit playbook if Certbot is not installed
+      ansible.builtin.meta: end_play
+      when: certbot_snap_check.rc != 0
+
+    - name: Check if certificates already exist
+      ansible.builtin.stat:
+        path: "{{ cert_file }}"
+      register: cert_files
+
+    - name: Skip SSL certificate generation
+      ansible.builtin.meta: end_play
+      when: cert_files.stat.exists
+
+  tasks:
+    - name: Create directory for Cloudflare credentials
+      ansible.builtin.file:
+        path: "{{ credentials_dir }}"
+        state: directory
+        mode: '0700'
+
+    - name: Copy Cloudflare DNS credentials file
+      ansible.builtin.copy:
+        dest: "{{ credentials_dir }}/cf_key.ini"
+        content: |
+          dns_cloudflare_api_token = {{ dns_cloudflare_api_token }}
+        mode: '0600'
+
+    - name: Generate SSL certificates using Certbot and Cloudflare DNS plugin
+      ansible.builtin.command: >
+        certbot certonly
+        --email {{ certbot_email }}
+        --dns-cloudflare
+        --dns-cloudflare-credentials {{ credentials_dir }}/cf_key.ini
+        --dns-cloudflare-propagation-seconds 60
+        -d '*.{{ domain_name }}'
+        --non-interactive
+        --agree-tos
+      args:
+        creates: "{{ cert_file }}"
+
+    - name: Display SSL certificates information
+      ansible.builtin.command: certbot certificates
+      register: cert_info
+      changed_when: false
+
+    - name: Show SSL certificates information
+      ansible.builtin.debug:
+        var: cert_info.stdout_lines
+
+    - name: Test automatic renewal of SSL certificates
+      ansible.builtin.command: >
+        certbot renew --dry-run
+      changed_when: false
+
+    - name: Ensure Certbot renewal timer is present
+      ansible.builtin.command: >
+        systemctl list-timers --all
+      register: certbot_renewal
+      changed_when: false
+
+    - name: Check if Certbot renewal timer is configured
+      ansible.builtin.set_fact:
+        certbot_timer_present: "{{ 'certbot' in certbot_renewal.stdout }}"
+
+    - name: Debug Certbot renewal timer presence
+      ansible.builtin.debug:
+        msg: >
+          Certbot renewal timer is {{ 'configured' if certbot_timer_present else 'not configured' }}
