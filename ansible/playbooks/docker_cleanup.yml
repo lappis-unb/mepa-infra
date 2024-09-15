@@ -1,0 +1,11 @@
+---
+- name: Cleanup docker
+  hosts: all
+  become: true
+  tasks:
+    - name: Prune docker images, containers, volumes and networks
+      community.docker.docker_prune:
+        images: true
+        containers: true
+        volumes: true
+        networks: true

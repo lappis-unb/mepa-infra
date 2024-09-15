@@ -1,0 +1,42 @@
+# https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/
+
+- name: Installing NGINX - Official Repository (recommended for Debian)
+  hosts: all
+  tags: nginx
+  become: true
+  tasks:
+    - name: Install the required packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - gnupg2
+          - ca-certificates
+          - lsb-release
+          - debian-archive-keyring
+        state: present
+
+    - name: Add the NGINX signing key (GPG key)
+      ansible.builtin.apt_key:
+        url: https://nginx.org/keys/nginx_signing.key
+        keyring: /usr/share/keyrings/nginx-archive-keyring.gpg
+        state: present
+
+    - name: Add the Nginx repository
+      ansible.builtin.apt_repository:
+        repo: deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/debian {{ ansible_distribution_release }} nginx
+        state: present
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+      notify: Restart the Nginx service
+
+  handlers:
+    - name: Restart the Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+      become: true
+      become_user: root

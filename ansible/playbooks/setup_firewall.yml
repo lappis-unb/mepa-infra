@@ -1,0 +1,27 @@
+---
+- name: Setup Firewall (UFW - Uncomplicated Firewall)
+  hosts: all
+  become: true
+  tasks:
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        default: deny
+        direction: incoming
+
+    - name: Allow SSH access
+      community.general.ufw:
+        rule: allow
+        port: 22
+        proto: tcp
+        state: enabled
+
+    - name: Open ports for HTTP and HTTPS
+      community.general.ufw:
+        rule: allow
+        port: '{{ item }}'
+        proto: tcp
+        state: enabled
+      loop:
+        - 80
+        - 443

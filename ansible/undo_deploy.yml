@@ -1,0 +1,28 @@
+- name: Undo deployment Docker Compose
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - host_vars/repository.yml
+  tasks:
+    - name: Tear down existing services
+      community.docker.docker_compose_v2:
+        project_src: "{{ sige_master_path }}"
+        files: docker-compose.yml
+        state: absent
+      register: compose_output
+
+    - name: Remove directory with the repository
+      ansible.builtin.file:
+        path: "{{ sige_master_path }}"
+        state: absent
+
+    - name: Cleanup docker
+      community.docker.docker_prune:
+        images: true
+        containers: true
+        volumes: false
+        networks: true
+
+    - name: Show results of Docker Compose
+      ansible.builtin.debug:
+        var: compose_output
