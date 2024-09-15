@@ -1,0 +1,40 @@
+# Sensitive or private information
+*.pem
+*.key
+*.pub
+*.env
+*ed25519*
+*id_rsa*
+*id_dsa*
+
+# Ansible
+*.retry
+*.pyc
+__pycache__/
+inventory/hosts*
+!inventory/hosts.example
+
+# Ansible Vault
+*.vault
+vault.yml
+vault.yaml
+
+# Python virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Miscellaneous
+.cache/
+
+# Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Directorys
+**/.draft/
+*-local/
