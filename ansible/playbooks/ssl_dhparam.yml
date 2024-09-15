@@ -9,11 +9,20 @@
       ansible.builtin.file:
         path: /etc/ssl/_letsencrypt
         state: directory
-        mode: "0755"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        mode: '0755'
+        owner: '{{ ansible_user }}'
+        group: '{{ ansible_user }}'
 
     - name: Generate DH parameters file
       ansible.builtin.command:
         cmd: openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
         creates: /etc/ssl/certs/dhparam.pem
+
+    - name: Display DH parameters information (debug)
+      ansible.builtin.command: openssl dhparam -text -in /etc/ssl/certs/dhparam.pem
+      register: dhparam_info
+      changed_when: false
+
+    - name: Show DH parameters information
+      ansible.builtin.debug:
+        var: dhparam_info.stdout_lines

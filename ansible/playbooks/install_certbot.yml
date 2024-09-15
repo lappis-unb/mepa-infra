@@ -49,3 +49,4 @@
       community.general.snap:
         name: certbot-dns-cloudflare
         state: present
+        classic: true
