@@ -40,13 +40,16 @@
         cmd: snap set certbot trust-plugin-with-root=ok
       changed_when: false
 
-    - name: Install Certbot DigitalOcean DNS plugin
-      community.general.snap:
-        name: certbot-dns-digitalocean
-        state: present
-
     - name: Install Certbot Cloudflare DNS plugin
       community.general.snap:
         name: certbot-dns-cloudflare
         state: present
-        classic: true
+      retries: 3
+      delay: 5
+
+    - name: Install Certbot DigitalOcean DNS plugin
+      community.general.snap:
+        name: certbot-dns-digitalocean
+        state: present
+      retries: 3
+      delay: 5

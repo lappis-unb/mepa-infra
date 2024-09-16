@@ -1,12 +1,28 @@
 ---
+- name: Infrastructure Setup
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Set facts based on variables (including those from command line)
+      ansible.builtin.set_fact:
+        create_user: "{{ create_user | default(true) }}"
+        install_packages: "{{ install_packages | default(true) }}"
+        install_docker: "{{ install_docker | default(true) }}"
+        setup_docker: "{{ setup_docker | default(true) }}"
+
 - name: Create and configure user Ansible
   import_playbook: ./playbooks/create_user.yml
+  when: create_user | bool
 
 - name: Install basic packages
   import_playbook: ./playbooks/install_essential_packages.yml
+  when: install_packages | bool
 
 - name: Install and configure Docker
   import_playbook: playbooks/install_docker.yml
+  when: install_docker | bool
 
 - name: Create docker network
   import_playbook: playbooks/setup_docker.yml
+  when: setup_docker | bool
