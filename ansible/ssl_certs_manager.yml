@@ -1,0 +1,39 @@
+---
+- name: SSL Certificate Management
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Set facts based on variables (including those from command line)
+      ansible.builtin.set_fact:
+        install_certbot: "{{ install_certbot | default(true) }}"
+        create_dhparam: "{{ create_dhparam | default(true) }}"
+        generate_ssl_cert: "{{ generate_ssl_cert | default(true) }}"
+        ssl_provider: "{{ ssl_provider | default('standalone') }}"
+
+    - name: Validate SSL provider
+      ansible.builtin.assert:
+        that:
+          - ssl_provider in ['standalone', 'digitalocean', 'cloudflare']
+        msg: "Invalid SSL provider. Please check your variable files."
+
+
+- name: Install Certbot and Plugins
+  import_playbook: ./playbooks/install_certbot.yml
+  when: install_certbot | bool
+
+- name: Create OpenSSL DH parameters
+  import_playbook: ./playbooks/ssl_dhparam.yml
+  when: create_dhparam | bool
+
+- name: Generate SSL certificates - standalone server
+  import_playbook: ./playbooks/ssl_cert_generate.yml
+  when: ssl_provider == 'standalone' and generate_ssl_cert | bool
+
+- name: Generate Wildcard SSL certificates - DigitalOcean
+  import_playbook: ./playbooks/wc_cert_digitalocean.yml
+  when: ssl_provider == 'digitalocean' and generate_ssl_cert | bool
+
+- name: Generate Wildcard SSL certificates - Cloudflare
+  import_playbook: ./playbooks/wc_cert_cloudflare.yml
+  when: ssl_provider == 'cloudflare' and generate_ssl_cert | bool
