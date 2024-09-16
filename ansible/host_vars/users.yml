@@ -1,2 +1,2 @@
-ansible_user: 'lappis'
-user_groups: 'sudo'
+ansible_user: "lappis"
+user_groups: "sudo"

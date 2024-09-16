@@ -1,8 +1,18 @@
-mepa_infra_repo: 'https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mepa-infra.git'
-mepa_infra_path: '/home/lappis/mepa-infra'
+---
+infra_repository: "https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mepa-infra.git"
+infra_path: "/home/lappis/mepa-infra"
+infra_branch: "main"
+infra_compose_file: "compose.yaml"
+infra_env_file: ""
 
-mepa_api_repo: 'https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mec-energia-api.git'
-mepa_api_path: '/home/lappis/mec-energia-api'
+api_repository: "https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mec-energia-api.git"
+api_path: "/home/lappis/mec-energia-api"
+api_branch: "main"
+api_compose_file: "compose-prod.yml"
+api_env_file: ".envs/.env.prod"
 
-mepa_web_repo: 'https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mec-energia-web.git'
-mepa_web_path: '/home/lappis/mec-energia-web'
+web_repository: "https://gitlab.com/lappis-unb/projetos-energia/mec-energia/mec-energia-web.git"
+web_path: "/home/lappis/mec-energia-web"
+web_branch: "main"
+web_compose_file: "compose-prod.yml"
+web_env_file: ".envs/.env.prod"
