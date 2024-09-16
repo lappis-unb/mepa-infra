@@ -1,0 +1,107 @@
+- name: Deploy using Docker Compose
+  hosts: all
+  gather_facts: false
+  become: true
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - repository is defined
+          - deploy_path is defined
+          - deploy_branch is defined
+          - compose_file is defined
+          - env_file is defined
+        msg: "One or more required variables are not set. Please check your variable files."
+
+    - name: Ensure Docker is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+  tasks:
+    - name: Display deployment information
+      ansible.builtin.debug:
+        msg: |
+          Deploying repository:
+            - Repository: {{ repository }}
+            - Path: {{ deploy_path }}
+            - Branch: {{ deploy_branch }}
+            - Compose file: {{ compose_file }}
+            - Env file: {{ env_file }}
+
+    - name: Check if the repository exists
+      ansible.builtin.stat:
+        path: "{{ deploy_path }}"
+      register: path_output
+
+    - name: Initiate git repository (if not exists)
+      ansible.builtin.git:
+        repo: "{{ repository }}"
+        dest: "{{ deploy_path }}"
+        version: "{{ deploy_branch }}"
+        clone: true
+        force: true
+      when: not path_output.stat.exists
+      register: git_output
+
+    - name: Update the repository (if exists)
+      ansible.builtin.git:
+        repo: "{{ repository }}"
+        dest: "{{ deploy_path }}"
+        version: "{{ deploy_branch }}"
+        force: true
+        update: true
+      when: path_output.stat.exists
+      register: git_output
+
+    - name: Show results of the git module
+      ansible.builtin.debug:
+        msg: >
+          Repository {{ repository }} => {
+          changed: {{ git_output.changed | bool | lower }},
+          message: {{ git_output.msg | default('No changes detected!') }} }
+      when: git_output.changed is defined # noqa: no-handler
+
+    - name: Check if the repository was updated
+      ansible.builtin.debug:
+        msg: "Repository was updated!"
+      when: git_output.changed is true # noqa: no-handler
+
+    - name: Stop and remove existing services
+      community.docker.docker_compose_v2:
+        project_src: "{{ deploy_path }}"
+        files: "{{ compose_file | default('docker-compose.yml', true) }}"
+        env_files: "{{ env_file | default(omit, true) }}"
+        state: absent
+        remove_volumes: false
+      when: git_output.changed # noqa: no-handler
+
+    - name: Build and start services
+      community.docker.docker_compose_v2:
+        project_src: "{{ deploy_path }}"
+        files: "{{ compose_file | default('docker-compose.yml', true) }}"
+        env_files: "{{ env_file | default(omit, true) }}"
+        state: present
+        pull: policy
+        build: "{{ 'always' if git_output.changed else 'policy' }}"
+        recreate: "{{ 'always' if git_output.changed else 'never' }}"
+        remove_orphans: true
+
+    - name: Display deployment result
+      ansible.builtin.debug:
+        var: deploy_result.stderr_lines
+      when: deploy_result.stderr_lines is defined and deploy_result.stderr_lines | length > 0
+
+    - name: Verify services after deployment
+      ansible.builtin.command:
+        cmd: docker compose -f {{ compose_file }} ps
+        chdir: "{{ deploy_path }}"
+      register: compose_ps
+      changed_when: false
+
+    - name: Show running services
+      ansible.builtin.debug:
+        var: compose_ps.stdout_lines
+      when: compose_ps.stdout_lines is defined and compose_ps.stdout_lines | length > 0
