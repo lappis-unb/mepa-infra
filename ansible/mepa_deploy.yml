@@ -1,0 +1,75 @@
+---
+- name: MEPA Deployment
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - host_vars/repository.yml
+    - host_vars/users.yml
+  vars:
+    deploy_back: true
+    deploy_front: true
+    deploy_infra: true
+
+  tasks:
+    - name: Set facts for backend and deployment
+      ansible.builtin.set_fact:
+        backend_vars:
+          repository: "{{ api_repository }}"
+          deploy_path: "{{ api_path }}"
+          deploy_branch: "{{ api_branch }}"
+          compose_file: "{{ api_compose_file }}"
+          env_file: "{{ api_env_file }}"
+
+    - name: Set facts for frontend deployment
+      ansible.builtin.set_fact:
+        frontend_vars:
+          repository: "{{ web_repository }}"
+          deploy_path: "{{ web_path }}"
+          deploy_branch: "{{ web_branch }}"
+          compose_file: "{{ web_compose_file }}"
+          env_file: "{{ web_env_file }}"
+
+    - name: Set facts for infrastructure deployment
+      ansible.builtin.set_fact:
+        infra_vars:
+          repository: "{{ infra_repository }}"
+          deploy_path: "{{ infra_path }}"
+          deploy_branch: "{{ infra_branch }}"
+          compose_file: "{{ infra_compose_file }}"
+          env_file: "{{ infra_env_file }}"
+
+    - name: Set facts common to all deployments
+      ansible.builtin.set_fact:
+        deploy_back: "{{ deploy_back }}"
+        deploy_front: "{{ deploy_front }}"
+        deploy_infra: "{{ deploy_infra }}"
+
+- name: Deploy Backend API
+  import_playbook: ./playbooks/deployment.yml
+  vars:
+    repository: "{{ backend_vars.repository }}"
+    deploy_path: "{{ backend_vars.deploy_path }}"
+    deploy_branch: "{{ backend_vars.deploy_branch }}"
+    compose_file: "{{ backend_vars.compose_file }}"
+    env_file: "{{ backend_vars.env_file }}"
+  when: deploy_back | bool
+
+- name: Deploy Frontend Web
+  import_playbook: ./playbooks/deployment.yml
+  vars:
+    repository: "{{ frontend_vars.repository }}"
+    deploy_path: "{{ frontend_vars.deploy_path }}"
+    deploy_branch: "{{ frontend_vars.deploy_branch }}"
+    compose_file: "{{ frontend_vars.compose_file }}"
+    env_file: "{{ frontend_vars.env_file }}"
+  when: deploy_front | bool
+
+- name: Deploy Infrastructure
+  import_playbook: ./playbooks/deployment.yml
+  vars:
+    repository: "{{ infra_vars.repository }}"
+    deploy_path: "{{ infra_vars.deploy_path }}"
+    deploy_branch: "{{ infra_vars.deploy_branch }}"
+    compose_file: "{{ infra_vars.compose_file }}"
+    env_file: "{{ infra_vars.env_file }}"
+  when: deploy_infra | bool
