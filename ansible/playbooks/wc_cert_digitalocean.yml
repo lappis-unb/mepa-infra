@@ -1,6 +1,7 @@
 ---
-- name: Create Wildcard SSL certificates using Certbot and DigitalOcean DNS plugin
+- name: Generate Wildcard SSL certificates using Certbot and DigitalOcean DNS plugin
   hosts: all
+  gather_facts: false
   become: true
   vars_files:
     - ../host_vars/secrets.yml
@@ -22,14 +23,18 @@
       ansible.builtin.meta: end_play
       when: certbot_snap_check.rc != 0
 
-    - name: Check if certificates already exist
+    - name: Check if certificate for the specific domain exists
       ansible.builtin.stat:
         path: "{{ cert_file }}"
-      register: cert_files
+      register: cert_file_check
 
-    - name: Skip SSL certificate generation
+    - name: Debug certificate information
+      ansible.builtin.debug:
+        msg: "Certificate for {{ domain_name }} exists: {{ cert_file_check.stat.exists }}"
+
+    - name: Skip SSL certificate generation (certificate already exists for this domain)
       ansible.builtin.meta: end_play
-      when: cert_files.stat.exists
+      when: cert_file_check.stat.exists
 
   tasks:
     - name: Create directory for DigitalOcean credentials
@@ -67,22 +72,23 @@
       ansible.builtin.debug:
         var: cert_info.stdout_lines
 
-    - name: Test automatic renewal of SSL certificates
-      ansible.builtin.command: >
-        certbot renew --dry-run
+    - name: Check for Certbot systemd timer
+      ansible.builtin.command:
+        cmd: systemctl list-timers | grep certbot
+      register: systemd_timer_check
       changed_when: false
+      failed_when: false
 
-    - name: Ensure Certbot renewal timer is present
-      ansible.builtin.command: >
-        systemctl list-timers --all
-      register: certbot_renewal
-      changed_when: false
-
-    - name: Check if Certbot renewal timer is configured
-      ansible.builtin.set_fact:
-        certbot_timer_present: "{{ 'certbot' in certbot_renewal.stdout }}"
-
-    - name: Debug Certbot renewal timer presence
+    - name: Display systemd timer check result
       ansible.builtin.debug:
-        msg: >
-          Certbot renewal timer is {{ 'configured' if certbot_timer_present else 'not configured' }}
+        msg: "Certbot systemd timer: {{ 'Found' if systemd_timer_check.rc == 0 else 'Not found' }}"
+
+    - name: Test Certbot automatic renewal
+      ansible.builtin.command:
+        cmd: certbot renew --dry-run
+      register: certbot_renew_test
+      changed_when: false
+
+    - name: Display Certbot renewal test results
+      ansible.builtin.debug:
+        var: certbot_renew_test.stdout_lines

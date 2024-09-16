@@ -1,5 +1,7 @@
+---
 - name: Create SSL certificates for standalone server
   hosts: all
+  gather_facts: false
   become: true
   vars_files:
     - ../host_vars/secrets.yml
@@ -18,24 +20,31 @@
       ansible.builtin.meta: end_play
       when: certbot_snap_check.rc != 0
 
-  tasks:
-    - name: Check if certificates already exist
+    - name: Check if certificate for the specific domain exists
       ansible.builtin.stat:
         path: "{{ cert_file }}"
-      register: cert_files
+      register: cert_file_check
 
+    - name: Debug certificate information
+      ansible.builtin.debug:
+        msg: "Certificate for {{ domain_name }} exists: {{ cert_file_check.stat.exists }}"
+
+    - name: Skip SSL certificate generation (certificate already exists for this domain)
+      ansible.builtin.meta: end_play
+      when: cert_file_check.stat.exists
+
+  tasks:
     - name: Generate SSL certificates using Certbot for standalone server
       ansible.builtin.command: >
         certbot certonly
         --standalone
         --email {{ certbot_email }}
         -d {{ domain_name }}
-        -d '*.{{ domain_name }}'
+        -d "*.{{ domain_name }}"
         --agree-tos
         --non-interactive
       args:
         creates: "{{ cert_file }}"
-      when: not cert_files.stat.exists
 
     - name: Display SSL certificates information
       ansible.builtin.command: certbot certificates
@@ -45,3 +54,24 @@
     - name: Show SSL certificates information
       ansible.builtin.debug:
         var: cert_info.stdout_lines
+
+    - name: Check for Certbot systemd timer
+      ansible.builtin.command:
+        cmd: systemctl list-timers | grep certbot
+      register: systemd_timer_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display systemd timer check result
+      ansible.builtin.debug:
+        msg: "Certbot systemd timer: {{ 'Found' if systemd_timer_check.rc == 0 else 'Not found' }}"
+
+    - name: Test Certbot automatic renewal
+      ansible.builtin.command:
+        cmd: certbot renew --dry-run
+      register: certbot_renew_test
+      changed_when: false
+
+    - name: Display Certbot renewal test results
+      ansible.builtin.debug:
+        var: certbot_renew_test.stdout_lines
